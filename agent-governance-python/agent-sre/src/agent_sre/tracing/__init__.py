@@ -101,14 +101,24 @@ class TraceContext:
 
     @classmethod
     def from_traceparent(cls, value: str) -> TraceContext:
-        """Parse a W3C traceparent header value."""
+        """Parse a W3C traceparent header value.
+
+        The sampled flag is bit 0 of the flags byte (W3C Trace Context
+        section 3.2.2), not literal value ``"01"`` — flags like ``"03"``
+        (sampled plus the Level 2 random-trace-id bit) must still parse
+        as sampled.
+        """
         parts = value.split("-")
         if len(parts) != 4:
             raise ValueError(f"Invalid traceparent: {value}")
+        try:
+            flags = int(parts[3], 16)
+        except ValueError:
+            raise ValueError(f"Invalid traceparent: {value}") from None
         return cls(
             trace_id=parts[1],
             span_id=parts[2],
-            sampled=parts[3] == "01",
+            sampled=bool(flags & 0x01),
         )
 
     def child(self) -> TraceContext:

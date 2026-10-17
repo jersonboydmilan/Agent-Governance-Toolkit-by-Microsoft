@@ -48,6 +48,20 @@ class TestTraceContext:
         with pytest.raises(ValueError, match="Invalid traceparent"):
             TraceContext.from_traceparent("bad-value")
 
+    def test_from_traceparent_sampled_bit_set_with_other_flags(self):
+        # flags=03: sampled (bit 0) plus the Level 2 random-trace-id bit (bit 1).
+        ctx = TraceContext.from_traceparent("00-abc123-def456-03")
+        assert ctx.sampled is True
+
+    def test_from_traceparent_sampled_bit_clear_with_other_flags(self):
+        # flags=02: random-trace-id bit set, sampled bit clear.
+        ctx = TraceContext.from_traceparent("00-abc123-def456-02")
+        assert ctx.sampled is False
+
+    def test_from_traceparent_malformed_flags_rejected(self):
+        with pytest.raises(ValueError, match="Invalid traceparent"):
+            TraceContext.from_traceparent("00-abc123-def456-zz")
+
     def test_child_preserves_trace_id(self):
         parent = TraceContext(trace_id="parent-trace", span_id="parent-span")
         child = parent.child()
